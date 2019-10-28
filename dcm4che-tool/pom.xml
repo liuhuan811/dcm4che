@@ -42,7 +42,7 @@
   <parent>
     <artifactId>dcm4che-parent</artifactId>
     <groupId>org.dcm4che</groupId>
-    <version>5.18.1</version>
+    <version>5.19.1</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.dcm4che.tool</groupId>
@@ -91,6 +91,7 @@
     <module>dcm4che-tool-swappxdata</module>
     <module>dcm4che-tool-syslog</module>
     <module>dcm4che-tool-syslogd</module>
+    <module>dcm4che-tool-upsscu</module>
     <module>dcm4che-tool-wadors</module>
     <module>dcm4che-tool-wadows</module>
     <module>dcm4che-tool-xml2dcm</module>

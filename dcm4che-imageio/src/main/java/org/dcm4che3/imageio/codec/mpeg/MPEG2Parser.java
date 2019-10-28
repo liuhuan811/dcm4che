@@ -47,9 +47,9 @@ import org.dcm4che3.data.UID;
 import org.dcm4che3.data.VR;
 import org.dcm4che3.imageio.codec.XPEGParser;
 import org.dcm4che3.imageio.codec.XPEGParserException;
+import org.dcm4che3.util.SafeBuffer;
 
 import java.io.IOException;
-import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.SeekableByteChannel;
 
@@ -97,7 +97,7 @@ public class MPEG2Parser implements XPEGParser {
             skip(channel, packet.length);
         }
         findSequenceHeader(channel, packet.length);
-        ((Buffer) buf).clear().limit(7);
+        SafeBuffer.clear(buf).limit(7);
         channel.read(buf);
         columns = ((data[0] & 0xff) << 4) | ((data[1] & 0xf0) >> 4);
         rows = ((data[1] & 0x0f) << 8) | (data[2] & 0xff);
@@ -153,20 +153,20 @@ public class MPEG2Parser implements XPEGParser {
 
     private void findSequenceHeader(SeekableByteChannel channel, int length) throws IOException {
         int remaining = length;
-        ((Buffer) buf).clear().limit(3);
-        while ((remaining -= ((Buffer) buf).remaining()) > 1) {
+        SafeBuffer.clear(buf).limit(3);
+        while ((remaining -= buf.remaining()) > 1) {
             channel.read(buf);
-            ((Buffer) buf).rewind();
+            SafeBuffer.rewind(buf);
             if (((data[0] << 16) | (data[1] << 8) | data[2]) == 1) {
-                ((Buffer) buf).clear().limit(1);
+                SafeBuffer.clear(buf).limit(1);
                 remaining--;
                 channel.read(buf);
-                ((Buffer) buf).rewind();
+                SafeBuffer.rewind(buf);
                 if (buf.get() == SEQUENCE_HEADER_STREAM_ID)
                     return;
-                ((Buffer) buf).limit(3);
+                SafeBuffer.limit(buf, 3);
             }
-            ((Buffer) buf).position(data[2] == 0 ? data[1] == 0 ? 2 : 1 : 0);
+            SafeBuffer.position(buf, data[2] == 0 ? data[1] == 0 ? 2 : 1 : 0);
             data[0] = 0;
         }
         throw new XPEGParserException("MPEG2 sequence header not found");
@@ -177,12 +177,11 @@ public class MPEG2Parser implements XPEGParser {
     }
 
     private int findLastGOP(SeekableByteChannel channel) throws IOException {
-        long size = channel.size();
-        long startPos = size - BUFFER_SIZE;
-        long minStartPos = Math.max(0, size - 0x100000);
-        while (startPos > minStartPos) {
-            channel.position(startPos);
-            ((Buffer) buf).clear();
+        long pos = channel.size() - 8;
+        do {
+            pos = Math.max(0, pos + 8 - BUFFER_SIZE);
+            channel.position(pos);
+            SafeBuffer.clear(buf);
             channel.read(buf);
             int i = 0;
             while (i + 8 < BUFFER_SIZE) {
@@ -192,8 +191,7 @@ public class MPEG2Parser implements XPEGParser {
                 }
                 i += data[i + 2] == 0 ? data[i + 1] == 0 ? 1 : 2 : 3;
             }
-            startPos -= BUFFER_SIZE - 8;
-        }
+        } while (pos > 0);
         throw new XPEGParserException("last MPEG2 Group of Pictures not found");
     }
 
@@ -208,9 +206,9 @@ public class MPEG2Parser implements XPEGParser {
     }
 
     private Packet nextPacket(SeekableByteChannel channel) throws IOException {
-        ((Buffer) buf).clear().limit(6);
+        SafeBuffer.clear(buf).limit(6);
         channel.read(buf);
-        ((Buffer) buf).rewind();
+        SafeBuffer.rewind(buf);
         int startCode = buf.getInt();
         if ((startCode & 0xfffffe00) != 0) {
             throw new XPEGParserException(

@@ -63,9 +63,11 @@ public class WebApplication {
         DCM4CHEE_ARC,
         DCM4CHEE_ARC_AET,
         PAM,
+        REJECT,
         MOVE,
         MOVE_MATCHING,
-        ELASTICSEARCH
+        ELASTICSEARCH,
+        DCM4CHEE_ARC_AET_DIFF
     }
 
     private Device device;

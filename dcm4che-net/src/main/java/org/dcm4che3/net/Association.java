@@ -309,6 +309,11 @@ public class Association {
         return (requestor ? rq : ac).getImplClassUID();
     }
 
+    public String getAbstractSyntax(int pcid) {
+        PresentationContext rqpc = rq.getPresentationContext(pcid);
+        return rqpc != null ? rqpc.getAbstractSyntax() : null;
+    }
+
     final int getMaxPDULengthSend() {
         return maxPDULength;
     }
@@ -457,6 +462,21 @@ public class Association {
             while (!rspHandlerForMsgId.isEmpty())
                 rspHandlerForMsgId.wait();
         }
+    }
+
+    /**
+     * Block if the number of outstanding DIMSE responses has reached the negotiated value
+     * for the maximum number of outstanding operations it may invoke asynchronously.
+     *
+     * @throws InterruptedException if any thread interrupted the current thread before or
+     *         while the current thread was waiting
+     */
+    public void waitForNonBlockingInvoke() throws InterruptedException {
+        if (maxOpsInvoked > 0)
+            synchronized (rspHandlerForMsgId) {
+                while (rspHandlerForMsgId.size() >= maxOpsInvoked)
+                    rspHandlerForMsgId.wait();
+            }
     }
 
     void write(AAssociateRQ rq) throws IOException {
@@ -1031,7 +1051,7 @@ public class Association {
             Attributes data, String tsuid, DimseRSPHandler rspHandler)
             throws IOException, InterruptedException {
         PresentationContext pc = pcFor(asuid, tsuid);
-        checkIsSCP(cuid);
+        checkIsSCP(asuid);
         Attributes neventrq =
                 Commands.mkNEventReportRQ(rspHandler.getMessageID(), cuid, iuid,
                         eventTypeId, data);
@@ -1063,7 +1083,7 @@ public class Association {
             DimseRSPHandler rspHandler)
             throws IOException, InterruptedException {
         PresentationContext pc = pcFor(asuid, null);
-        checkIsSCU(cuid);
+        checkIsSCU(asuid);
         Attributes ngetrq =
                 Commands.mkNGetRQ(rspHandler.getMessageID(), cuid, iuid, tags);
         invoke(pc, ngetrq, null, rspHandler, conn.getResponseTimeout());
@@ -1115,7 +1135,7 @@ public class Association {
             DataWriter data, String tsuid, DimseRSPHandler rspHandler)
             throws IOException, InterruptedException {
         PresentationContext pc = pcFor(asuid, tsuid);
-        checkIsSCU(cuid);
+        checkIsSCU(asuid);
         Attributes nsetrq =
                 Commands.mkNSetRQ(rspHandler.getMessageID(), cuid, iuid);
         invoke(pc, nsetrq, data, rspHandler, conn.getResponseTimeout());
@@ -1145,7 +1165,7 @@ public class Association {
             Attributes data, String tsuid, DimseRSPHandler rspHandler)
             throws IOException, InterruptedException {
         PresentationContext pc = pcFor(asuid, tsuid);
-        checkIsSCU(cuid);
+        checkIsSCU(asuid);
         Attributes nactionrq =
                 Commands.mkNActionRQ(rspHandler.getMessageID(), cuid, iuid,
                         actionTypeId, data);
@@ -1177,7 +1197,7 @@ public class Association {
             Attributes data, String tsuid, DimseRSPHandler rspHandler)
             throws IOException, InterruptedException {
         PresentationContext pc = pcFor(asuid, tsuid);
-        checkIsSCU(cuid);
+        checkIsSCU(asuid);
         Attributes ncreaterq =
                 Commands.mkNCreateRQ(rspHandler.getMessageID(), cuid, iuid);
         invoke(pc, ncreaterq, DataWriterAdapter.forAttributes(data), rspHandler,
@@ -1207,7 +1227,7 @@ public class Association {
             DimseRSPHandler rspHandler)
             throws IOException, InterruptedException {
         PresentationContext pc = pcFor(asuid, null);
-        checkIsSCU(cuid);
+        checkIsSCU(asuid);
         Attributes ndeleterq =
                 Commands.mkNDeleteRQ(rspHandler.getMessageID(), cuid, iuid);
         invoke(pc, ndeleterq, null, rspHandler, conn.getResponseTimeout());
